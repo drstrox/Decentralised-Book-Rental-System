@@ -100,21 +100,3 @@ npm test
 3. **Rent a Book**: Browse the marketplace and rent a book by paying the deposit and fee
 4. **Return a Book**: Return a book from the "My Rentals" page to get your refund
 
-## Security Considerations
-
-- Reentrancy protection against malicious contract callbacks
-- Access control mechanisms ensure only authorized users can perform actions
-- Safe math operations to prevent overflows
-- Minimized on-chain data storage for gas efficiency
-
-## Future Improvements
-
-- Additional book metadata (author, category, description)
-- Book rating and review system
-- Late fee implementation for overdue returns
-- Book condition verification mechanism
-- Integration with decentralized storage for book covers
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
