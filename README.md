@@ -61,7 +61,7 @@ The BookRental contract includes:
 
 1. Clone the repository
    ```
-   git clone https://github.com/yourusername/book-rental-dapp.git
+   git clone https://github.com/drstrox/Decentralised-Book-Rental-System.git
    cd book-rental-dapp
    ```
 
