@@ -62,7 +62,7 @@ The BookRental contract includes:
 1. Clone the repository
    ```
    git clone https://github.com/drstrox/Decentralised-Book-Rental-System.git
-   cd book-rental-dapp
+   cd Decentralised-Book-Rental-System
    ```
 
 2. Install dependencies
