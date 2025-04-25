@@ -231,7 +231,8 @@ contract BookRental is ReentrancyGuard {
         address,
         uint256,
         bool,
-        string memory // metadataUri added
+        string memory, // metadataUri added
+        uint256
     ) {
         Book storage book = books[_bookId];
         return (
@@ -242,7 +243,8 @@ contract BookRental is ReentrancyGuard {
             book.renter,
             book.rentedAt,
             book.isAvailable,
-            book.metadataUri
+            book.metadataUri,
+            book.rentalPeriod
         );
     }
 }
