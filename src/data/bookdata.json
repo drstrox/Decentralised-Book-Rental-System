@@ -1,0 +1,17 @@
+{
+    "0": {
+      "title": "The Catcher in the Rye",
+      "description": "A classic coming-of-age novel.",
+      "author": "J.D. Salinger",
+      "cover": "https://ipfs.io/ipfs/QmExampleHash1",
+      "rating": 4.7
+    },
+    "1": {
+      "title": "1984",
+      "description": "A dystopian novel by George Orwell.",
+      "author": "George Orwell",
+      "cover": "https://ipfs.io/ipfs/QmExampleHash2",
+      "rating": 4.9
+    }
+  }
+  
