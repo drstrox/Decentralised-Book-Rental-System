@@ -14,6 +14,7 @@ contract BookRental is ReentrancyGuard {
         uint256 rentedAt; // timestamp when book was rented
         uint256 rentalPeriod; // rental period in seconds
         bool isAvailable;
+        string metadataUri; // New field for metadata URI
     }
     
     // Mapping from book ID to Book struct
@@ -26,7 +27,7 @@ contract BookRental is ReentrancyGuard {
     mapping(address => uint256[]) private userRentals;
     
     // Events
-    event BookListed(uint256 indexed bookId, string title, uint256 dailyPrice, uint256 deposit, address owner);
+    event BookListed(uint256 indexed bookId, string title, uint256 dailyPrice, uint256 deposit, address owner, string metadataUri);
     event BookRented(uint256 indexed bookId, address renter, uint256 rentedAt, uint256 deposit);
     event BookReturned(uint256 indexed bookId, address renter, uint256 returnedAt, uint256 refundAmount, uint256 lateFee);
 
@@ -35,8 +36,9 @@ contract BookRental is ReentrancyGuard {
      * @param _title Title of the book
      * @param _dailyPrice Daily rental price in wei
      * @param _deposit Deposit amount in wei
+     * @param _metadataUri URI containing metadata about the book
      */
-    function listBook(string memory _title, uint256 _dailyPrice, uint256 _deposit) external {
+    function listBook(string memory _title, uint256 _dailyPrice, uint256 _deposit, string memory _metadataUri) external {
         require(_dailyPrice > 0, "Daily price must be greater than 0");
         require(_deposit > 0, "Deposit must be greater than 0");
         
@@ -51,10 +53,11 @@ contract BookRental is ReentrancyGuard {
             renter: address(0),
             rentedAt: 0,
             rentalPeriod: 0,
-            isAvailable: true
+            isAvailable: true,
+            metadataUri: _metadataUri
         });
         
-        emit BookListed(bookId, _title, _dailyPrice, _deposit, msg.sender);
+        emit BookListed(bookId, _title, _dailyPrice, _deposit, msg.sender, _metadataUri);
     }
 
     /**
@@ -69,6 +72,7 @@ contract BookRental is ReentrancyGuard {
         require(msg.sender != book.owner, "Owner cannot rent their own book");
         require(msg.value >= book.deposit + book.dailyPrice, "Insufficient payment");
         
+        uint256 excessPayment = msg.value - (book.deposit + book.dailyPrice);
         // Update book status
         book.renter = msg.sender;
         book.rentedAt = block.timestamp;
@@ -81,7 +85,12 @@ contract BookRental is ReentrancyGuard {
         // Send first day's payment to the owner
         (bool success, ) = payable(book.owner).call{value: book.dailyPrice}("");
         require(success, "Failed to send payment to owner");
-        
+
+        if (excessPayment > 0) {
+            (bool renterSuccess, ) = payable(msg.sender).call{value: excessPayment}("");
+            require(renterSuccess, "Failed to refund excess payment to renter");
+        }
+
         emit BookRented(_bookId, msg.sender, block.timestamp, book.deposit);
     }
 
@@ -162,7 +171,7 @@ contract BookRental is ReentrancyGuard {
 
     /**
      * @dev Get all books
-     * @return Array of book IDs, titles, daily prices, deposits, owners, and availability status
+     * @return Array of book IDs, titles, daily prices, deposits, owners, availability status, and metadata URIs
      */
     function getAllBooks() external view returns (
         uint256[] memory,
@@ -170,7 +179,8 @@ contract BookRental is ReentrancyGuard {
         uint256[] memory,
         uint256[] memory,
         address[] memory,
-        bool[] memory
+        bool[] memory,
+        string[] memory // Metadata URI array
     ) {
         uint256[] memory ids = new uint256[](_bookIdCounter);
         string[] memory titles = new string[](_bookIdCounter);
@@ -178,7 +188,8 @@ contract BookRental is ReentrancyGuard {
         uint256[] memory deposits = new uint256[](_bookIdCounter);
         address[] memory owners = new address[](_bookIdCounter);
         bool[] memory availability = new bool[](_bookIdCounter);
-        
+        string[] memory metadataUris = new string[](_bookIdCounter);
+
         for (uint256 i = 0; i < _bookIdCounter; i++) {
             Book storage book = books[i];
             ids[i] = i;
@@ -187,9 +198,10 @@ contract BookRental is ReentrancyGuard {
             deposits[i] = book.deposit;
             owners[i] = book.owner;
             availability[i] = book.isAvailable;
+            metadataUris[i] = book.metadataUri; // Adding metadata URI
         }
-        
-        return (ids, titles, dailyPrices, deposits, owners, availability);
+
+        return (ids, titles, dailyPrices, deposits, owners, availability, metadataUris);
     }
 
     /**
@@ -204,7 +216,7 @@ contract BookRental is ReentrancyGuard {
     /**
      * @dev Get book details
      * @param _bookId ID of the book
-     * @return Book details (title, daily price, deposit, owner, renter, rentedAt, availability)
+     * @return Book details (title, daily price, deposit, owner, renter, rentedAt, availability, metadataUri)
      */
     function getBookDetails(uint256 _bookId) external view returns (
         string memory,
@@ -213,7 +225,8 @@ contract BookRental is ReentrancyGuard {
         address,
         address,
         uint256,
-        bool
+        bool,
+        string memory // metadataUri added
     ) {
         Book storage book = books[_bookId];
         return (
@@ -223,7 +236,8 @@ contract BookRental is ReentrancyGuard {
             book.owner,
             book.renter,
             book.rentedAt,
-            book.isAvailable
+            book.isAvailable,
+            book.metadataUri
         );
     }
 }

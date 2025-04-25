@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useWeb3 } from '../context/Web3Context';
 import { useBookRental } from '../context/BookRentalContext';
 import BookCard from '../components/BookCard';
 import { BookX } from 'lucide-react';
 
 interface BookMeta {
-  [key: string]: {
+  [id: string]: {
     description?: string;
     author?: string;
     cover?: string;
@@ -15,29 +15,38 @@ interface BookMeta {
 const Marketplace: React.FC = () => {
   const { isConnected } = useWeb3();
   const { books, loadBooks, isLoading, error } = useBookRental();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [bookMeta, setBookMeta] = useState<BookMeta>({});
 
-  // Fetch off-chain metadata
+  // Fetch off-chain metadata (e.g. book covers, authors)
   useEffect(() => {
     fetch('/bookData.json')
       .then((res) => res.json())
-      .then((data) => setBookMeta(data))
-      .catch((err) => console.error('Failed to load book metadata', err));
+      .then((data) => {
+        console.log('Book metadata loaded:', data);
+        setBookMeta(data);
+      })
+      .catch((err) => {
+        console.error('Failed to load book metadata', err);
+      });
   }, []);
 
-  // Fetch books from blockchain
+  // Load blockchain books when connected
   useEffect(() => {
     if (isConnected) {
       loadBooks();
     }
   }, [isConnected, loadBooks]);
 
-  const filteredBooks = books.filter((book) =>
-    book.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const availableBooks = filteredBooks.filter((book) => book.isAvailable);
+  // Filter available books by title search
+  const availableBooks = useMemo(() => {
+    return books
+      .filter((book) => book.isAvailable)
+      .filter((book) =>
+        book.title.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+  }, [books, searchTerm]);
 
   return (
     <div className="max-w-6xl mx-auto px-4">
@@ -56,6 +65,7 @@ const Marketplace: React.FC = () => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full md:w-1/2 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          aria-label="Search for books by title"
         />
       </div>
 
@@ -67,7 +77,7 @@ const Marketplace: React.FC = () => {
       ) : availableBooks.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {availableBooks.map((book) => {
-            const meta = bookMeta[book.id] || {};
+            const meta = bookMeta[book.id.toString()] || {};
             return (
               <BookCard
                 key={book.id}
@@ -77,7 +87,6 @@ const Marketplace: React.FC = () => {
                 deposit={book.deposit}
                 owner={book.owner}
                 isAvailable={book.isAvailable}
-                // Off-chain metadata
                 author={meta.author}
                 description={meta.description}
                 cover={meta.cover}

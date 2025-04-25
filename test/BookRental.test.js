@@ -99,6 +99,17 @@ contract("BookRental", accounts => {
         "Book is not available for rent"
       );
     });
+
+    it("should revert when trying to rent a non-existent book", async () => {
+      const nonExistentBookId = 999; // ID that hasn't been listed
+      const payment = web3.utils.toBN(deposit).add(web3.utils.toBN(dailyPrice));
+    
+      await truffleAssert.reverts(
+        bookRental.rentBook(nonExistentBookId, { from: renter, value: payment }),
+        "Book does not exist"
+      );
+    });
+    
   });
 
   describe("Returning books", () => {

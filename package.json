@@ -2,7 +2,7 @@
   "name": "decentralized-book-rental",
   "private": true,
   "version": "0.1.0",
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -17,6 +17,7 @@
     "@openzeppelin/test-helpers": "^0.5.16",
     "ethers": "^6.10.0",
     "lucide-react": "^0.344.0",
+    "nft.storage": "^7.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.22.3",

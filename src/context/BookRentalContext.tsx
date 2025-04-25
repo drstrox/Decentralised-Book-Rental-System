@@ -3,8 +3,7 @@ import { ethers } from 'ethers';
 import { useWeb3 } from './Web3Context';
 import BookRentalABI from '../contracts/BookRental.json';
 
-// Contract address - will be set after deployment
-const CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3'; // Replace with actual address after deployment
+const CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3'; // Replace with actual
 
 interface Book {
   id: number;
@@ -14,6 +13,7 @@ interface Book {
   owner: string;
   renter: string;
   rentedAt: number;
+  rentalPeriod: number;
   isAvailable: boolean;
 }
 
@@ -52,169 +52,154 @@ export const BookRentalProvider: React.FC<BookRentalProviderProps> = ({ children
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize contract
   useEffect(() => {
-    const initializeContract = async () => {
-      if (provider && signer) {
-        try {
-          // Create contract instance
-          const contractInstance = new ethers.Contract(
-            CONTRACT_ADDRESS,
-            BookRentalABI.abi,
-            signer
-          );
-          setContract(contractInstance);
-        } catch (err) {
-          console.error('Error initializing contract:', err);
-          setError('Failed to initialize contract');
-        }
-      }
-    };
-
-    initializeContract();
+    if (provider && signer) {
+      const initContract = new ethers.Contract(CONTRACT_ADDRESS, BookRentalABI.abi, signer);
+      setContract(initContract);
+    }
   }, [provider, signer]);
 
-  // Load books
+  const formatBook = (
+    id: number,
+    title: string,
+    dailyPrice: bigint,
+    deposit: bigint,
+    owner: string,
+    renter: string,
+    rentedAt: bigint,
+    rentalPeriod: bigint,
+    isAvailable: boolean
+  ): Book => ({
+    id,
+    title,
+    dailyPrice: ethers.formatEther(dailyPrice),
+    deposit: ethers.formatEther(deposit),
+    owner,
+    renter,
+    rentedAt: Number(rentedAt),
+    rentalPeriod: Number(rentalPeriod),
+    isAvailable
+  });
+
   const loadBooks = async () => {
     if (!contract) return;
-    
     setIsLoading(true);
     setError(null);
-    
     try {
-      const result = await contract.getAllBooks();
-      const [ids, titles, dailyPrices, deposits, owners, availability] = result;
-      
-      const formattedBooks: Book[] = [];
-      
-      for (let i = 0; i < ids.length; i++) {
-        // Get complete book details for each book
-        const details = await contract.getBookDetails(ids[i]);
-        
-        formattedBooks.push({
-          id: Number(ids[i]),
-          title: titles[i],
-          dailyPrice: ethers.formatEther(dailyPrices[i]),
-          deposit: ethers.formatEther(deposits[i]),
-          owner: owners[i],
-          renter: details[4],
-          rentedAt: Number(details[5]),
-          isAvailable: availability[i]
-        });
-      }
-      
-      setBooks(formattedBooks);
+      const [ids, titles, dailyPrices, deposits, owners, availability] = await contract.getAllBooks();
+
+      const fetchedBooks: Book[] = await Promise.all(
+        ids.map(async (id: bigint, idx: number) => {
+          const details = await contract.getBookDetails(id);
+          return formatBook(
+            Number(id),
+            titles[idx],
+            dailyPrices[idx],
+            deposits[idx],
+            owners[idx],
+            details[4],
+            details[5],
+            details[6],
+            availability[idx]
+          );
+        })
+      );
+
+      setBooks(fetchedBooks);
     } catch (err) {
-      console.error('Error loading books:', err);
+      console.error(err);
       setError('Failed to load books');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Load user's rented books
   const loadUserRentals = async () => {
     if (!contract || !account) return;
-    
     setIsLoading(true);
     setError(null);
-    
     try {
-      const rentalIds = await contract.getUserRentals(account);
-      
-      const rentals: Book[] = [];
-      
-      for (let i = 0; i < rentalIds.length; i++) {
-        const bookId = Number(rentalIds[i]);
-        const details = await contract.getBookDetails(bookId);
-        
-        rentals.push({
-          id: bookId,
-          title: details[0],
-          dailyPrice: ethers.formatEther(details[1]),
-          deposit: ethers.formatEther(details[2]),
-          owner: details[3],
-          renter: details[4],
-          rentedAt: Number(details[5]),
-          isAvailable: details[6]
-        });
-      }
-      
+      const ids = await contract.getUserRentals(account);
+      const rentals: Book[] = await Promise.all(
+        ids.map(async (id: bigint) => {
+          const bookId = Number(id);
+          const details = await contract.getBookDetails(bookId);
+          return formatBook(
+            bookId,
+            details[0],
+            details[1],
+            details[2],
+            details[3],
+            details[4],
+            details[5],
+            details[6],
+            details[7]
+          );
+        })
+      );
       setUserRentals(rentals);
     } catch (err) {
-      console.error('Error loading user rentals:', err);
-      setError('Failed to load your rented books');
+      console.error(err);
+      setError('Failed to load user rentals');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // List a book
   const listBook = async (title: string, dailyPrice: string, deposit: string) => {
     if (!contract) return;
-    
     setIsLoading(true);
     setError(null);
-    
     try {
-      const dailyPriceWei = ethers.parseEther(dailyPrice);
-      const depositWei = ethers.parseEther(deposit);
-      
-      const tx = await contract.listBook(title, dailyPriceWei, depositWei);
+      const tx = await contract.listBook(
+        title,
+        ethers.parseEther(dailyPrice),
+        ethers.parseEther(deposit)
+      );
       await tx.wait();
-      
       await loadBooks();
     } catch (err) {
-      console.error('Error listing book:', err);
+      console.error(err);
       setError('Failed to list book');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Rent a book
   const rentBook = async (bookId: number, totalPayment: string) => {
     if (!contract) return;
-    
     setIsLoading(true);
     setError(null);
-    
     try {
-      const paymentWei = ethers.parseEther(totalPayment);
-      
-      const tx = await contract.rentBook(bookId, { value: paymentWei });
+      const tx = await contract.rentBook(bookId, {
+        value: ethers.parseEther(totalPayment)
+      });
       await tx.wait();
-      
       await Promise.all([loadBooks(), loadUserRentals()]);
     } catch (err) {
-      console.error('Error renting book:', err);
+      console.error(err);
       setError('Failed to rent book');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Return a book
   const returnBook = async (bookId: number) => {
     if (!contract) return;
-    
     setIsLoading(true);
     setError(null);
-    
     try {
       const tx = await contract.returnBook(bookId);
       await tx.wait();
-      
       await Promise.all([loadBooks(), loadUserRentals()]);
     } catch (err) {
-      console.error('Error returning book:', err);
+      console.error(err);
       setError('Failed to return book');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Load books when contract is initialized
   useEffect(() => {
     if (contract && isConnected) {
       loadBooks();
@@ -222,7 +207,7 @@ export const BookRentalProvider: React.FC<BookRentalProviderProps> = ({ children
     }
   }, [contract, isConnected, account]);
 
-  const value = {
+  const value: BookRentalContextType = {
     contract,
     books,
     userRentals,

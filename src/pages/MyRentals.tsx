@@ -8,7 +8,7 @@ import { BookOpen } from 'lucide-react';
 const MyRentals: React.FC = () => {
   const { isConnected } = useWeb3();
   const { userRentals, loadUserRentals, isLoading, error } = useBookRental();
-  
+
   useEffect(() => {
     if (isConnected) {
       loadUserRentals();
@@ -43,19 +43,27 @@ const MyRentals: React.FC = () => {
         </div>
       ) : userRentals.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {userRentals.map((book) => (
-            <BookCard
-              key={book.id}
-              id={book.id}
-              title={book.title}
-              dailyPrice={book.dailyPrice}
-              deposit={book.deposit}
-              owner={book.owner}
-              isAvailable={false}
-              isRented={true}
-              rentedAt={book.rentedAt}
-            />
-          ))}
+          {userRentals.map((book) => {
+            // Calculate the rental cost based on rentedAt and dailyPrice
+            const rentedAt = book.rentedAt ? book.rentedAt : 0;
+            const daysRented = Math.ceil((Math.floor(Date.now() / 1000) - rentedAt) / 86400); // in days
+            const currentRentalCost = (parseFloat(book.dailyPrice) * daysRented).toFixed(4);
+
+            return (
+              <BookCard
+                key={book.id}
+                id={book.id}
+                title={book.title}
+                dailyPrice={book.dailyPrice}
+                deposit={book.deposit}
+                owner={book.owner}
+                isAvailable={false}  // Since the book is rented
+                isRented={true}
+                rentedAt={rentedAt}
+                currentRentalCost={currentRentalCost}  // Pass the calculated cost to BookCard
+              />
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-16">

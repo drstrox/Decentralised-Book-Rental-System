@@ -41,11 +41,11 @@ const BookCard: React.FC<BookCardProps> = ({
 
     const now = Math.floor(Date.now() / 1000);
     const secondsRented = now - rentedAt;
-    return Math.ceil(secondsRented / 86400);
+    return Math.ceil(secondsRented / 86400); // Convert to days
   };
 
   const calculateTotalCost = () => {
-    return (parseFloat(dailyPrice) + parseFloat(deposit)).toFixed(4);
+    return (parseFloat(dailyPrice) + parseFloat(deposit)).toFixed(4); // Calculate the total cost (rent + deposit)
   };
 
   const handleRent = async () => {
