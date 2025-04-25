@@ -156,22 +156,23 @@ contract BookRental is ReentrancyGuard {
      * @param _bookId ID of the book to remove
      */
     function removeFromUserRentals(address _user, uint256 _bookId) private {
-        uint256[] storage rentals = userRentals[_user];
-
-        uint256 length = rentals.length;
-        for (uint256 i = 0; i < length;) { // Gas Optimisation : prefetch length to save gas 
-            unchecked {
-                i++;
-            }
-            if (rentals[i] == _bookId) {
-                // Replace with the last element
-                rentals[i] = rentals[rentals.length - 1];
-                // Remove the last element
-                rentals.pop();
-                break;
-            }
+    uint256[] storage rentals = userRentals[_user];
+    uint256 length = rentals.length;
+    
+    // Fix: Loop indexing was incorrect
+    for (uint256 i = 0; i < length;) {
+        if (rentals[i] == _bookId) {
+            // Replace with the last element
+            rentals[i] = rentals[length - 1];
+            // Remove the last element
+            rentals.pop();
+            break;
+        }
+        unchecked {
+            ++i;
         }
     }
+}
 
     /**
      * @dev Get all books
