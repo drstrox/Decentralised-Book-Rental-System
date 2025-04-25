@@ -21,7 +21,7 @@ contract BookRental is ReentrancyGuard {
     mapping(uint256 => Book) public books;
     
     // Counter for book IDs
-    uint256 private _bookIdCounter;
+    uint128 private _bookIdCounter; // Gas optimization: use smaller type since we don't expect more than 2^128 books
     
     // Mapping to track user's rented books
     mapping(address => uint256[]) private userRentals;
@@ -72,7 +72,6 @@ contract BookRental is ReentrancyGuard {
         require(msg.sender != book.owner, "Owner cannot rent their own book");
         require(msg.value >= book.deposit + book.dailyPrice, "Insufficient payment");
         
-        uint256 excessPayment = msg.value - (book.deposit + book.dailyPrice);
         // Update book status
         book.renter = msg.sender;
         book.rentedAt = block.timestamp;
@@ -86,8 +85,8 @@ contract BookRental is ReentrancyGuard {
         (bool success, ) = payable(book.owner).call{value: book.dailyPrice}("");
         require(success, "Failed to send payment to owner");
 
-        if (excessPayment > 0) {
-            (bool renterSuccess, ) = payable(msg.sender).call{value: excessPayment}("");
+        if (msg.value > book.deposit + book.dailyPrice) { // Gas optimization: check if excess payment exists using calculation, not by storing in a variable
+            (bool renterSuccess, ) = payable(msg.sender).call{value: msg.value - (book.deposit + book.dailyPrice)}("");
             require(renterSuccess, "Failed to refund excess payment to renter");
         }
 
@@ -158,7 +157,12 @@ contract BookRental is ReentrancyGuard {
      */
     function removeFromUserRentals(address _user, uint256 _bookId) private {
         uint256[] storage rentals = userRentals[_user];
-        for (uint256 i = 0; i < rentals.length; i++) {
+
+        uint256 length = rentals.length;
+        for (uint256 i = 0; i < length;) { // Gas Optimisation : prefetch length to save gas 
+            unchecked {
+                i++;
+            }
             if (rentals[i] == _bookId) {
                 // Replace with the last element
                 rentals[i] = rentals[rentals.length - 1];
@@ -191,7 +195,7 @@ contract BookRental is ReentrancyGuard {
         string[] memory metadataUris = new string[](_bookIdCounter);
 
         for (uint256 i = 0; i < _bookIdCounter; i++) {
-            Book storage book = books[i];
+            Book memory book = books[i]; // Gas optimization: load book once in memory instead of storage
             ids[i] = i;
             titles[i] = book.title;
             dailyPrices[i] = book.dailyPrice;
